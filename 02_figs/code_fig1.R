@@ -127,6 +127,6 @@ ggplot() +
         axis.title = element_text(size = rel(1))
   )
 
-ggsave("02_figs/fig_manu-curves-dotted.png", width = 8.85, height = 3.72)  
+ggsave("02_figs/fig1.png", width = 8.85, height = 3.72)  
 
 
