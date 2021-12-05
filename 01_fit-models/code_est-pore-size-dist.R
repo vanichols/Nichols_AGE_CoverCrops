@@ -12,7 +12,7 @@
 
 rm(list = ls())
 library(tidyverse)
-#remotes::install_github("vanichols/PFIswhc")
+#remotes::install_github("vanichols/PFIswhc") #--run if first time
 library(PFIswhc)
 library(lme4)
 library(lmerTest)
