@@ -6,6 +6,7 @@
 #
 #
 # last modified: sept 24 2021 (getting stats for manu table)
+# 12/5/2021 - tested, runs
 ##############################
 
 # 1 cm water = 0.0980665 kpa

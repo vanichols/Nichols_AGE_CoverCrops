@@ -7,6 +7,7 @@
 #
 # last modified: 5/21/2021 (do rand intcp for location when using sand cov)
 # 6/24/2021 (update sat to 3.8 from 2.5)
+# 12/5/2021 - tested, everything runs
 ##############################
 
 

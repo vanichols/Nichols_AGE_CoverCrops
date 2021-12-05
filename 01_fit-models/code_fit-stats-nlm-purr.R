@@ -23,10 +23,9 @@ library(lme4)
 library(emmeans)
 library(tidyverse)
 library(HydroMe)
+library(nlme)
 library(nlraa)
 library(PFIswhc)
-??SSgardner
-?SSgard
 
 #--data
 rd <- 
@@ -132,7 +131,7 @@ dparms_eu <-
 
 dparms_eu %>% write_csv("01_fit-models/dat_gard-parms-eu.csv")
 
-#--map function to data, each trt (pool reps) (doesn't run?)
+#--map function to data, each trt (pool reps)
 
 dparms_gr <-
   rd %>%
@@ -152,7 +151,6 @@ dparms_gr %>% write_csv("01_fit-models/dat_gard-parms-trt.csv")
 
 # stats -------------------------------------------------------------------
 
-#--the above code sin't running any more, so just read in the results it wrote when it did run, sigh
 dparms_eu <- 
   read_csv("01_fit-models/dat_gard-parms-eu.csv") %>% 
   left_join(sare_plotkey) %>% 

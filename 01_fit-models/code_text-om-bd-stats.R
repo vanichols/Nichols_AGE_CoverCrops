@@ -7,7 +7,7 @@
 #
 # last modified: 
 # 5/21/2021 (do rand intcp for location when using sand cov)
-#
+# 12/5/2021 - tested
 ##############################
 
 
@@ -226,13 +226,3 @@ bind_rows(
   mutate(cov = "none")
 )
   
-
-
-
-# biomass -----------------------------------------------------------------
-
-library(PFIweeds2020)
-
-pfi_mccbio %>% 
-  filter(!grepl("B44", field))
-sare_plotkey
