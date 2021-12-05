@@ -1,0 +1,484 @@
+---
+title: "Supplementary Material for 'Winter Cover Cropping Effects on Soil Water-Holding Capacity Vary by Site'"
+author: "Nichols et al. 2021"
+date: "6/15/2021"
+header-includes: #allows you to add in your own Latex packages
+- \usepackage{float} #use the 'float' package
+- \floatplacement{figure}{H}  #make every figure with caption = h, this was the fix
+output: 
+  pdf_document:
+    fig_cap: yes
+    keep_tex: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+library(tidyverse)
+library(PFIweeds2020)
+library(PFIswhc)
+library(scales)
+library(patchwork)
+library(knitr)
+library(kableExtra)
+library(maps)
+library(ggthemes)
+
+
+library(purrr)
+
+library(lme4)
+library(lmerTest)
+library(emmeans)
+
+```
+
+# Supplemental material S1. Map of sites
+
+```{r sitemap, fig.cap="Map of site locations in Iowa"}
+
+pfi_red <- "#9d3c22"
+pfi_green <- "#b2bb1e"
+pfi_blue <- "#036cb6"
+pfi_orng <- "#e87d1e"
+pfi_brn <- "#574319"
+
+map_iowa <- as_tibble(map_data('state')) %>%
+  filter(region == "iowa")
+
+map_county <- as_tibble(map_data('county')) %>%
+  filter(region == "iowa")
+
+map_county3 <-
+  map_county %>% filter(subregion %in% c("boone", "greene", "washington"))
+
+set.seed(3)
+
+ggplot() +
+  geom_polygon(
+    data = map_iowa,
+    aes(x = long, y = lat, group = group),
+    color = "gray20",
+    fill = "white"
+  ) +
+  geom_polygon(
+    data = map_county,
+    aes(x = long, y = lat, group = group),
+    color = "gray80",
+    fill = NA
+  ) +
+  # geom_polygon(
+  #   data = map_county3,
+  #   aes(x = long, y = lat, group = group),
+  #   color = pfi_blue,
+  #   fill = "white",
+  #   size = 3
+  # ) +
+  geom_jitter(
+    data = pfi_siteinfo %>% rename("long" = "lon"),
+    aes(x = long, y = lat),
+    size = 4,
+    fill = pfi_orng,
+    width = 0.07,
+    pch = 21
+  ) +
+  geom_text(aes(x = -95.05, y = 42.105), size = 7, label = "West", color = "black") +
+  geom_text(aes(x = -93.5, y = 42.315), size = 7, label = "Central", color = "black") +
+  geom_text(aes(x = -91.7, y = 41.05), size = 7, label = "East", color = "black") +
+  theme(
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank()
+  ) +
+  coord_quickmap() +
+  theme_map()
+```
+
+# Supplemental material S2. General Site Management Summary
+
+```{r gentbl}
+
+pfi_tb <- pfi_sitemgmt %>%
+  rename(
+    "Site Description" = site_desc, 
+    "General Location" = loc,
+    "Treatment Description" = trt_desc,
+    "Year of Initiation" = initiation_year,
+    "Crop Planted in 2019" = crop2019,
+    "Number of Treatment Replicates" = reps_nu,
+    "Sampled in 2019" = sampled2019,
+    "Herbicides Used in 2018 Growing Season" = herb_growingseason2018,
+    "Herbicdes Used in Fall 2018" = herb_fall2018,
+    "Herbicides Used in Spring 2019" = herb_spring2019,
+    "General Herbicide Regime" = herbspring_desc,
+    "General Date of Cover Crop Termination" = herbspring2019_date,
+    "General Date of Crop Planting" = cropplanting2019_date,
+    "Inorganic Fertilizer Used" = inorganic_fert,
+    "Organic Fertilizer Used" = organic_fert,
+    "Tillage Used" = tillage
+    ) 
+
+#--general
+pfi_tb %>% 
+  select(1:7) %>% 
+  kable(caption = "General Site Description", booktabs = T, align = "c") %>% 
+  collapse_rows(columns = 1, latex_hline = "major") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) %>% 
+  column_spec(column = c(1), width = "5em")  %>% 
+  column_spec(column = c(2), width = "5em")  %>% 
+  column_spec(column = c(3), width = "5em")  %>% 
+  column_spec(column = c(4:6), width = "3em") 
+```
+
+\newpage
+
+```{r herbtable}
+#--herbicide
+pfi_tb %>% 
+  select(1, 8:10) %>% 
+  kable(caption = "2018-2019 Herbicide Use", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) %>% 
+  column_spec(column = c(1:4), width = "8em") %>% 
+  collapse_rows(columns = 1, latex_hline = "major")
+```
+
+\newpage
+
+```{r mgmttable}
+
+#--mgmt
+pfi_tb %>% 
+  select(1, 11:16) %>% 
+  kable(caption = "General Management", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) %>% 
+  column_spec(column = c(2), width = "7em") %>% 
+   column_spec(column = c(3:7), width = "5em") %>% 
+   collapse_rows(columns = 1, latex_hline = "major")
+  
+```
+
+
+\newpage
+Cover crop biomass production over past 10 years of trials
+
+```{r ccbio}
+
+  pfi_ccbio %>% 
+  filter(year > 2009) %>% 
+  mutate(site_name = recode(site_name,
+                            "Boyd" = "Central",
+                            "Funcke" = "West",
+                            "Stout" = "East")) %>% 
+  unite(site_name, sys_trt, col = "trial") %>% 
+  group_by(trial, year) %>% 
+  summarise(mbio = mean(ccbio_Mgha)) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  pivot_wider(names_from = year, values_from = mbio) %>% 
+  ungroup() %>% 
+      kable(caption = "Historical cover crop biomass production (Mg/ha) by trial", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) %>% 
+   collapse_rows(columns = 1, latex_hline = "major")
+
+```
+
+
+
+\newpage
+
+# Supplemental material S3. Statistical summaries
+ 
+## Clay, silt, and sand components
+
+```{r clay}
+clay.stats <- read_csv("../01_fit-models/dat_clay-stats.csv")
+
+clay.stats %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  mutate(diff_pval = ifelse(diff_pval < 0.001, "<0.001", diff_pval)) %>% 
+  kable(caption = "Statistical analysis of cover crop effect on clay", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) 
+
+silt.stats <- read_csv("../01_fit-models/dat_silt-stats.csv")
+
+silt.stats %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  mutate(diff_pval = ifelse(diff_pval < 0.001, "<0.001", diff_pval)) %>% 
+  kable(caption = "Statistical analysis of cover crop effect on silt", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) 
+
+sand.stats <- read_csv("../01_fit-models/dat_sand-stats.csv")
+
+sand.stats %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  mutate(diff_pval = ifelse(diff_pval < 0.001, "<0.001", diff_pval)) %>% 
+  kable(caption = "Statistical analysis of cover crop effect on sand", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) 
+
+```
+
+## Soil organic matter
+
+```{r omstats}
+
+om.stats <- read_csv("../01_fit-models/dat_om-stats.csv")
+
+om.stats %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  mutate(diff_pval = ifelse(diff_pval < 0.001, "<0.001", diff_pval)) %>% 
+  kable(caption = "Statistical analysis of cover crop effect on organic matter, with and without sand covariate", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) %>% 
+   collapse_rows(columns = c(1), latex_hline = "major")
+
+
+
+```
+
+## Soil bulk density
+```{r bulkden}
+
+#--bd
+PFIswhc::sare_bulkden %>% 
+  left_join(sare_plotkey) %>% 
+   group_by(site_name, sys_trt, crop_trt, cc_trt) %>% 
+  summarise(bulkden_mean = mean(bulkden_gcm3, na.rm = T),
+            bulkden_sd = sd(bulkden_gcm3, na.rm = T)) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  kable(caption = "Mean bulk density (g/cm3) by trial", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) %>% 
+   collapse_rows(columns = c(1), latex_hline = "major")
+
+bd.stats <- read_csv("../01_fit-models/dat_bd-stats.csv")
+
+bd.stats %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  mutate(diff_pval = ifelse(diff_pval < 0.001, "<0.001", diff_pval)) %>% 
+  kable(caption = "Statistical analysis of cover crop effect on bulk density, with and without sand covariate", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) %>% 
+   collapse_rows(columns = c(1), latex_hline = "major")
+
+
+
+```
+
+## Soil moisture (%vol) at saturation
+
+```{r sat}
+
+
+sat.stats <- read_csv("../01_fit-models/dat_sat-emmeans-diff.csv") %>% 
+  select(cov, site_sys, everything(), -null.value)
+
+sat.stats %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  mutate(adj.p.value = ifelse(adj.p.value < 0.001, "<0.001",adj.p.value)) %>% 
+  kable(caption = "Statistical analysis of cover crop effect on soil water at saturation, with and without sand covariate", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) %>% 
+   collapse_rows(columns = c(1), latex_hline = "major")
+```
+
+## Soil moisture (%vol) at field capacity (-100 cm water)
+
+```{r fc}
+
+fc.stats <- read_csv("../01_fit-models/dat_fc-emmeans-diff.csv") %>% 
+  select(cov, site_sys, everything(), -null.value)
+
+fc.stats %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  mutate(adj.p.value = ifelse(adj.p.value < 0.001, "<0.001",adj.p.value)) %>% 
+  kable(caption = "Statistical analysis of cover crop effect on soil water at field capacity, with and without sand covariate", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) %>% 
+   collapse_rows(columns = c(1), latex_hline = "major")
+```
+
+## Fitted parameters a and n
+
+```{r paramsalp, fig.cap="Non-linear model fitted parameters"}
+
+#--nonlinear fits
+nlm.params <- 
+  read_csv("../01_fit-models/dat_gard-parms-eu.csv") %>% 
+  left_join(sare_plotkey) %>%
+  unite(site_name, sys_trt, col = "site_sys") %>% 
+  select(term, site_sys, cc_trt, rep, 
+         estimate, std.error) %>% 
+  arrange(term, site_sys, cc_trt, rep)
+
+nlm.params %>% 
+  filter(term == "alp") %>% 
+  select(-term) %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  kable(caption = "Table of 'a' Gardener parameter estimate", booktabs = T, align = "c") %>% 
+  collapse_rows(columns = c(1, 2), latex_hline = "major") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) 
+
+nlm.params %>% 
+  filter(term == "scal") %>% 
+  select(-term) %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  kable(caption = "Table of 'n' Gardener parameter estimate", booktabs = T, align = "c") %>% 
+  collapse_rows(columns = c(1, 2), latex_hline = "major") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) 
+
+
+nlm.params %>% 
+  ggplot(aes(rep, estimate, color = cc_trt)) + 
+  geom_point() + 
+  geom_linerange(aes(ymin = estimate - std.error, 
+                     ymax = estimate + std.error)) +
+  facet_grid(term ~ site_sys, scales = "free", labeller = label_wrap_gen())
+
+```
+
+
+## Macro-pore percentages
+
+```{r macropore}
+read_csv("../01_fit-models/dat_poresize-emmeans.csv") %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  select(site_sys, cc_trt, estimate, df, conf.low, conf.high, contrast, est_diff, pval_diff) %>% 
+  kable(caption = "Table of macropores estimates and comparisons", booktabs = T, align = "c") %>% 
+  collapse_rows(columns = c(1, 8, 9), latex_hline = "major") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) 
+
+
+```
+
+
+
+
+# Supplemental material S4. Detailed soil texture results
+
+```{r texture, fig.cap="Soil texture components varied by trial and cover crop treatment, with the cover cropped plots having significantly more sand bolded orange color, and significantly less clay at the West-grain and East-grain trials both, commercial fields"}
+
+dat <- 
+  sare_texture %>% 
+  left_join(sare_plotkey) %>% 
+  unite(site_name, sys_trt, col = "site_sys", sep = "-")
+
+om <- 
+  sare_om %>% 
+  left_join(sare_plotkey) %>% 
+  unite(site_name, sys_trt, col = "site_sys", sep = "-")
+
+
+pfi_red <- "#9d3c22"
+pfi_green <- "#b2bb1e"
+pfi_blue <- "#036cb6"
+pfi_orng <- "#e87d1e"
+pfi_brn <- "#574319"
+
+myorder <- c("clay", "silt", "sand")
+
+# cover cover plots and no-cover separate----------------------------------------------------------
+
+dat_pie_cc <- 
+  dat %>% 
+  select(site_sys, cc_trt, clay, silt, sand) %>% 
+  pivot_longer(clay:sand) %>% 
+  group_by(site_sys, cc_trt, name) %>% 
+  summarise(value  = mean(value, na.rm = T)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from =  name, values_from = value)  %>% 
+  mutate_if(is.numeric, round, 0) %>% 
+  mutate(sand = 100 - clay - silt) %>% 
+  pivot_longer(clay:silt) %>% 
+  mutate(value = value/100)
+
+
+#--use purrr to amek labels
+dat_pie2_cc <- 
+  dat_pie_cc %>% 
+  mutate(name = factor(name, levels = myorder),
+         name2 = fct_rev(name),
+         value = round(value, 2)) %>% 
+  arrange(name2) %>% 
+  group_by(site_sys, cc_trt) %>% 
+  nest() %>% 
+  mutate(data2 = data %>% purrr::map(. %>% 
+                                       arrange(name2) %>% 
+                                       mutate(half = value/2,
+                                              prev = lag(value),
+                                              prev = ifelse(is.na(prev), 0, prev),
+                                              cumprev = cumsum(prev),
+                                              pos = half + cumprev) %>% 
+                                       select(-c(half, prev, cumprev)))) %>% 
+  unnest(data2)
+
+
+
+#--fig
+dat_pie2_cc %>% 
+  # left_join(om %>% 
+  #             group_by(site_sys, cc_trt) %>% 
+  #             summarise(om = round(mean(om, na.rm = T), 1))) %>% 
+  mutate(
+    cc_trt = case_when(
+      grepl("cc", cc_trt) ~ "Rye Cover Crop",
+      grepl("no", cc_trt) ~ "No Cover",
+      TRUE ~ cc_trt),
+    site = site_sys,
+    site_sys = factor(site_sys, levels = c("West-grain", "Central-silage", "Central-grain", "East-grain")) 
+    #site = paste0(site, "\n", om, "% OM")
+  ) %>% 
+  ggplot(aes(x = "", y = value, fill = name, alpha = name)) +
+  geom_bar(stat = "identity") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(y = pos,
+                label = paste(round(value, 4)*100, "%")),
+                #label = percent(value, accuracy = 4)), 
+            size = 5) +
+  scale_fill_manual(values = c("clay" = pfi_brn, "silt" = pfi_red, "sand" = pfi_orng)) + 
+  facet_grid(cc_trt~site_sys) +
+  scale_alpha_manual(values = c(0.4, 0.4, 1)) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_text(size = rel(1.5)),
+        legend.text = element_text(size = rel(1.3)),
+        legend.position = "bottom") +
+  labs(fill = NULL) +
+  guides(alpha = F)
+  
+
+```
+
+Table with values:
+```{r texture2}
+
+dat <- 
+  sare_texture %>% 
+  left_join(sare_plotkey) %>% 
+  unite(site_name, sys_trt, col = "site_sys", sep = "-")
+
+dat_pie_cc <- 
+  dat %>% 
+  select(site_sys, cc_trt, clay, silt, sand) %>% 
+  pivot_longer(clay:sand) %>% 
+  group_by(site_sys, cc_trt, name) %>% 
+  summarise(value  = mean(value, na.rm = T)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from =  name, values_from = value)  %>% 
+  mutate_if(is.numeric, round, 0) %>% 
+  mutate(sand = 100 - clay - silt) %>% 
+  pivot_longer(clay:silt) %>% 
+  mutate(value = value/100)
+
+dat_pie_cc %>% 
+  pivot_wider(names_from = name, values_from = value) %>% 
+  mutate(tot = clay + sand + silt,
+         sig_sand_diff = ifelse(site_sys %in% c("East-grain", "West-grain"), "Yes", "No")) %>% 
+  kable(caption = "Table of values", booktabs = T, align = "c") %>% 
+  collapse_rows(columns = c(1,7), latex_hline = "major") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) 
+
+read_csv("../01_fit-models/dat_sand-stats.csv") %>% 
+  mutate_if(is.numeric, round, 3) %>% 
+  mutate(pval = ifelse(diff_pval < 0.001, "<0.001", paste(diff_pval))) %>% 
+  select(-diff_pval) %>% 
+  kable(caption = "Table of sand statistics", booktabs = T, align = "c") %>% 
+  kable_styling(latex_options = c("striped", "HOLD_position"), position = "center", full_width = F) 
+
+
+```
+
+
